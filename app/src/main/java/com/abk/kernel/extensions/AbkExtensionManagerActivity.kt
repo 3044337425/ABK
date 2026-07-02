@@ -28,6 +28,7 @@ import androidx.compose.material.icons.filled.InstallMobile
 import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -57,7 +58,6 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.abk.kernel.R
 import com.abk.kernel.data.repository.PreferencesRepository
-import com.abk.kernel.ui.components.AbkCenteredLoadingTransition
 import com.abk.kernel.ui.components.AbkScreenHorizontalPadding
 import com.abk.kernel.ui.components.AppBackgroundHost
 import com.abk.kernel.ui.components.ExpressiveSectionCard
@@ -264,11 +264,6 @@ fun AbkExtensionManagerScreen(
         }
     }
 
-    if (loading && bootstrapMode) {
-        AbkCenteredLoadingTransition(text = stringResource(R.string.loading))
-        return
-    }
-
     Scaffold(
         modifier = modifier,
         containerColor = containerColor,
@@ -302,10 +297,14 @@ fun AbkExtensionManagerScreen(
         }
     ) { padding ->
         if (loading) {
-            AbkCenteredLoadingTransition(
-                text = stringResource(R.string.loading),
-                modifier = Modifier.padding(padding)
-            )
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator()
+            }
             return@Scaffold
         }
 
