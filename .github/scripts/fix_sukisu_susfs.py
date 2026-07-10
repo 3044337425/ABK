@@ -222,6 +222,7 @@ int ksu_handle_execveat_sucompat(int *fd, struct filename **filename_ptr,
 {
     struct filename *filename;
     struct ksu_sulog_pending_event *pending_sucompat = NULL;
+    const char __user *const __user *argv_user_ptr = (const char __user *const __user *)argv_user;
     int ret;
 
     (void)fd;
@@ -241,15 +242,10 @@ int ksu_handle_execveat_sucompat(int *fd, struct filename **filename_ptr,
     if (likely(memcmp(filename->name, su_path, sizeof(su_path))))
         return 0;
 
-    if (current_chrooted()) {
-        pr_err("ksu_handle_execveat_sucompat: su found but NOT allowed! Because current process is running in chrooted environment\n");
-        return 0;
-    }
-
     pr_info("ksu_handle_execveat_sucompat: su found\n");
     memcpy((void *)filename->name, KSUD_PATH, sizeof(KSUD_PATH));
 
-    pending_sucompat = ksu_sulog_capture_sucompat(filename->name, (struct user_arg_ptr *)argv_user, GFP_KERNEL);
+    pending_sucompat = ksu_sulog_capture_sucompat(filename->name, argv_user_ptr, GFP_KERNEL);
 
     ret = escape_with_root_profile();
     if (ret)
@@ -280,10 +276,6 @@ int ksu_handle_faccessat(int *dfd, const char __user **filename_user, int *mode,
     strncpy_from_user_nofault(path, *filename_user, sizeof(path));
 
     if (unlikely(!memcmp(path, su_path, sizeof(su_path)))) {
-        if (current_chrooted()) {
-            pr_err("ksu_handle_faccessat: su found but NOT allowed! Because current process is running in chrooted environment\n");
-            return 0;
-        }
         pr_info("ksu_handle_faccessat: su->sh!\n");
         *filename_user = sh_user_path();
     }
@@ -303,10 +295,6 @@ int ksu_handle_stat(int *dfd, struct filename **filename, int *flags)
     if (likely(memcmp((*filename)->name, su_path, sizeof(su_path))))
         return 0;
 
-    if (current_chrooted()) {
-        pr_err("ksu_handle_stat: su found but NOT allowed! Because current process is running in chrooted environment\n");
-        return 0;
-    }
     pr_info("ksu_handle_stat: su->sh!\n");
     memcpy((void *)(*filename)->name, SH_PATH, sizeof(SH_PATH));
     return 0;
@@ -325,10 +313,6 @@ int ksu_handle_stat(int *dfd, const char __user **filename_user, int *flags)
     strncpy_from_user_nofault(path, *filename_user, sizeof(path));
 
     if (unlikely(!memcmp(path, su_path, sizeof(su_path)))) {
-        if (current_chrooted()) {
-            pr_err("ksu_handle_stat: su found but NOT allowed! Because current process is running in chrooted environment\n");
-            return 0;
-        }
         pr_info("ksu_handle_stat: su->sh!\n");
         *filename_user = sh_user_path();
     }

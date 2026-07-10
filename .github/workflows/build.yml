@@ -2908,6 +2908,8 @@ jobs:
           # 修正头文件包含路径（适配 in-tree 编译）
           if [ -f common/drivers/rekernel/rekernel_binder.c ]; then
             sed -i 's|#include <../android/binder_internal.h>|#include "../../drivers/android/binder_internal.h"|g' common/drivers/rekernel/rekernel_binder.c
+            grep -qF '#include <linux/seq_file.h>' common/drivers/rekernel/rekernel_binder.c || \
+              sed -i '/#include <trace\/hooks\/binder.h>/a #include <linux/seq_file.h>' common/drivers/rekernel/rekernel_binder.c
           fi
 
           # 配置 defconfig（幂等）
