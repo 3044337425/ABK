@@ -1851,6 +1851,7 @@ private fun contributors(): List<AboutContributor> = listOf(
     AboutContributor("DebugBoard"),
     AboutContributor("DreamFerry"),
     AboutContributor("elysias123"),
+    AboutContributor("fanziyun"),
     AboutContributor("Fede2782"),
     AboutContributor("FixeQyt"),
     AboutContributor("FunLay123"),
