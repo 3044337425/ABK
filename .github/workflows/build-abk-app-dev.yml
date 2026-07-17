@@ -562,7 +562,7 @@ jobs:
           git restore --staged --worktree version.json app/build.gradle.kts app/src/main/res/values/strings.xml 2>/dev/null || true
 
           python .github/scripts/update-version-json.py \
-            --channel normal \
+            --channel dev \
             --workflow-name "${GITHUB_WORKFLOW}" \
             --run-id "${GITHUB_RUN_ID}" \
             --commit-sha "${GITHUB_SHA}" \
@@ -584,6 +584,10 @@ jobs:
           title: "chore(app): update unstable version metadata"
           body: |
             Automated update of unstable version metadata.
+
+            Changes:
+            - Updated version metadata
+            - Updated build information
 
             Workflow: ${{ github.workflow }}
             Run ID: ${{ github.run_id }}

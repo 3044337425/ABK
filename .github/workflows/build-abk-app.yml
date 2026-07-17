@@ -581,6 +581,10 @@ jobs:
           body: |
             Automated update of unstable version metadata.
 
+            Changes:
+            - Updated version metadata
+            - Updated build information
+
             Workflow: ${{ github.workflow }}
             Run ID: ${{ github.run_id }}
             Commit: ${{ github.sha }}
