@@ -1497,6 +1497,13 @@ jobs:
       - name: 应用 SUSFS 补丁
         if: inputs.enable_susfs && inputs.ksu_variant != 'None'
         working-directory: ${{ env.KERNEL_ROOT }}
+        env:
+          ABK_ANDROID_VERSION: ${{ inputs.android_version }}
+          ABK_KERNEL_VERSION: ${{ inputs.kernel_version }}
+          ABK_KSU_VARIANT: ${{ inputs.ksu_variant }}
+          ABK_SUB_LEVEL: ${{ inputs.sub_level }}
+          ABK_OS_PATCH_LEVEL: ${{ inputs.os_patch_level }}
+          ABK_USE_BBG: ${{ inputs.use_bbg }}
         run: |
           echo "应用 SUSFS 补丁..."
           # 读取 SUSFS 上游版本（例如 v2.1.0），用于匹配修复补丁目录
@@ -1608,11 +1615,11 @@ jobs:
             return 0
           }
 
-          cp $SUSFS4KSU/kernel_patches/50_add_susfs_in_gki-${{ inputs.android_version }}-${{ inputs.kernel_version }}.patch ./common/
+          cp "$SUSFS4KSU/kernel_patches/50_add_susfs_in_gki-${ABK_ANDROID_VERSION}-${ABK_KERNEL_VERSION}.patch" ./common/
           cp $SUSFS4KSU/kernel_patches/fs/* ./common/fs/
           cp $SUSFS4KSU/kernel_patches/include/linux/* ./common/include/linux/
 
-          case "${{ inputs.ksu_variant }}" in
+          case "$ABK_KSU_VARIANT" in
             "Official")
               cd ./KernelSU
               cp $SUSFS4KSU/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch ./
@@ -1634,9 +1641,9 @@ jobs:
           esac
 
           cd $KERNEL_ROOT/common
-          patch -p1 < 50_add_susfs_in_gki-${{ inputs.android_version }}-${{ inputs.kernel_version }}.patch || true
+          patch -p1 < "50_add_susfs_in_gki-${ABK_ANDROID_VERSION}-${ABK_KERNEL_VERSION}.patch" || true
 
-          if [ "${{ inputs.ksu_variant }}" == "SukiSU" ] || [ "${{ inputs.ksu_variant }}" == "ReSukiSU" ]; then
+          if [ "$ABK_KSU_VARIANT" == "SukiSU" ] || [ "$ABK_KSU_VARIANT" == "ReSukiSU" ]; then
             SUSFS_C="./fs/susfs.c"
             if [ -f "$SUSFS_C" ] && grep -q '^static void susfs_run_sus_path_loop(' "$SUSFS_C"; then
               sed -i 's/^static void susfs_run_sus_path_loop(/void susfs_run_sus_path_loop(/' "$SUSFS_C"
@@ -1644,8 +1651,8 @@ jobs:
             fi
           fi
 
-          if [ "${{ inputs.ksu_variant }}" == "Official" ] || [ "${{ inputs.ksu_variant }}" == "SukiSU" ] || [ "${{ inputs.ksu_variant }}" == "ReSukiSU" ]; then
-            CURRENT_SUB="${{ inputs.sub_level }}"
+          if [ "$ABK_KSU_VARIANT" == "Official" ] || [ "$ABK_KSU_VARIANT" == "SukiSU" ] || [ "$ABK_KSU_VARIANT" == "ReSukiSU" ]; then
+            CURRENT_SUB="$ABK_SUB_LEVEL"
             if [[ ! "$CURRENT_SUB" =~ ^[0-9]+$ ]]; then
               CURRENT_SUB=99999
             fi
@@ -1890,26 +1897,26 @@ jobs:
             }
 
             # Android 12 - 5.10 修复
-            if [[ "${{ inputs.android_version }}" == "android12" && "${{ inputs.kernel_version }}" == "5.10" ]]; then
+            if [[ "$ABK_ANDROID_VERSION" == "android12" && "$ABK_KERNEL_VERSION" == "5.10" ]]; then
               if sub_in_range "$CURRENT_SUB" 43 117; then
                 fix_task_mmu_show_pad
                 apply_susfs_optional_patch "Android 12 - 5.10 fdinfo.c" "a12-5.10/fdinfo.c.patch"
                 fix_fdinfo_mask_decl
                 apply_susfs_base_patch "Android 12 - 5.10 base.c" "a12-5.10/base.c.patch"
-                if [[ "${{ inputs.ksu_variant }}" == "SukiSU" && "${{ inputs.use_bbg }}" == "true" ]]; then
+                if [[ "$ABK_KSU_VARIANT" == "SukiSU" && "$ABK_USE_BBG" == "true" ]]; then
                   fix_proc_base_missing_vma_decl
                 fi
-                if [[ "${{ inputs.ksu_variant }}" == "Official" && "${{ inputs.use_bbg }}" == "true" ]]; then
+                if [[ "$ABK_KSU_VARIANT" == "Official" && "$ABK_USE_BBG" == "true" ]]; then
                   fix_proc_base_missing_vma_decl
                 fi
-                if [[ "${{ inputs.ksu_variant }}" == "ReSukiSU" ]]; then
+                if [[ "$ABK_KSU_VARIANT" == "ReSukiSU" ]]; then
                   fix_proc_base_missing_vma_decl
                 fi
               fi
             fi
 
             # Android 13 - 5.15 修复
-            if [[ "${{ inputs.android_version }}" == "android13" && "${{ inputs.kernel_version }}" == "5.15" ]]; then
+            if [[ "$ABK_ANDROID_VERSION" == "android13" && "$ABK_KERNEL_VERSION" == "5.15" ]]; then
               if sub_in_range "$CURRENT_SUB" 41 137; then
                 apply_susfs_optional_patch "Android 13 - 5.15 namespace.c" "a13-5.15/namespace.c.patch"
                 if [[ "$CURRENT_SUB" -eq 41 ]] && grep -qF 'static_branch_unlikely(&susfs_is_sdcard_android_data_not_decrypted)' ./fs/namespace.c; then
@@ -1941,14 +1948,14 @@ jobs:
                 apply_susfs_optional_patch "Android 13 - 5.15 fdinfo.c" "a13-5.15/fdinfo.c.patch"
                 fix_fdinfo_mask_decl
                 apply_susfs_optional_patch "Android 13 - 5.15 open.c" "a13-5.15/open.c.patch"
-                if [[ "${{ inputs.os_patch_level }}" != "2024-05" ]]; then
+                if [[ "$ABK_OS_PATCH_LEVEL" != "2024-05" ]]; then
                   fix_task_mmu_show_pad
                 fi
               fi
             fi
 
             # Android 14 - 6.1 修复
-            if [[ "${{ inputs.android_version }}" == "android14" && "${{ inputs.kernel_version }}" == "6.1" ]]; then
+            if [[ "$ABK_ANDROID_VERSION" == "android14" && "$ABK_KERNEL_VERSION" == "6.1" ]]; then
               if sub_in_range "$CURRENT_SUB" 25 162; then
                 apply_susfs_base_patch "Android 14 - 6.1 base.c" "a14-6.1/base.c.patch"
                 if grep -q 'susfs_is_current_proc_umounted\|SUSFS_IS_INODE_SUS_MAP\|SUSFS_IS_INODE_OPEN_REDIRECT' ./fs/proc/base.c && ! grep -qF '#include <linux/susfs_def.h>' ./fs/proc/base.c; then
@@ -1958,7 +1965,7 @@ jobs:
                     sed -i '/#include <linux\/cpufreq_times.h>/a #if defined(CONFIG_KSU_SUSFS_SUS_MAP) || defined(CONFIG_KSU_SUSFS_OPEN_REDIRECT)\n#include <linux\/susfs_def.h>\n#endif' ./fs/proc/base.c
                   fi
                 fi
-                if [[ "${{ inputs.os_patch_level }}" != "2024-05" ]]; then
+                if [[ "$ABK_OS_PATCH_LEVEL" != "2024-05" ]]; then
                   fix_task_mmu_show_pad
                 fi
                 # 修复 6.1 LTS: SUSFS 补丁在 namespace.c 头部 hunk 因上下文不匹配而失败，
@@ -1974,8 +1981,8 @@ jobs:
             fi
 
             # Android 15 - 6.6 修复
-            if [[ "${{ inputs.android_version }}" == "android15" && "${{ inputs.kernel_version }}" == "6.6" ]]; then
-              if [[ "${{ inputs.ksu_variant }}" == "Official" ]] && { sub_in_range "$CURRENT_SUB" 50 58 || sub_in_range "$CURRENT_SUB" 98 127; }; then
+            if [[ "$ABK_ANDROID_VERSION" == "android15" && "$ABK_KERNEL_VERSION" == "6.6" ]]; then
+              if [[ "$ABK_KSU_VARIANT" == "Official" ]] && { sub_in_range "$CURRENT_SUB" 50 58 || sub_in_range "$CURRENT_SUB" 98 127; }; then
                 fix_selinux_extern_static
               fi
               if sub_in_range "$CURRENT_SUB" 98 127; then
@@ -1998,7 +2005,7 @@ jobs:
             fi
 
             # Android 16 - 6.12 修复
-            if [[ "${{ inputs.android_version }}" == "android16" && "${{ inputs.kernel_version }}" == "6.12" ]]; then
+            if [[ "$ABK_ANDROID_VERSION" == "android16" && "$ABK_KERNEL_VERSION" == "6.12" ]]; then
               # 修复 setuid_hook.c 重复定义
               SETUID_HOOK="$KERNEL_ROOT/common/drivers/kernelsu/setuid_hook.c"
               if [ -f "$SETUID_HOOK" ]; then
