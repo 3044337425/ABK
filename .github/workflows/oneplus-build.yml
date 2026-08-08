@@ -76,9 +76,6 @@ jobs:
       CCACHE_MAXSIZE: 8G
 
     steps:
-      - name: 检出 ABK 补丁仓库
-        uses: actions/checkout@v6
-
       - name: 构建信息摘要
         shell: bash
         run: |
@@ -226,6 +223,9 @@ jobs:
           remove-haskell: "true"
           remove-codeql: "true"
 
+      - name: 检出 ABK 补丁仓库
+        uses: actions/checkout@v6
+
       - name: 安装依赖
         shell: bash
         run: |
@@ -247,7 +247,7 @@ jobs:
 
           apt_update_retry
           sudo DEBIAN_FRONTEND=noninteractive apt-get install -yq --no-install-recommends \
-            python3 git curl ccache libelf-dev build-essential flex bison libssl-dev \
+            python3 git curl ccache libelf-dev libdw-dev build-essential flex bison libssl-dev \
             libncurses-dev liblz4-tool zlib1g-dev libxml2-utils rsync unzip gawk \
             dos2unix zip gcc-aarch64-linux-gnu
           if ! command -v repo >/dev/null 2>&1; then
@@ -288,6 +288,15 @@ jobs:
             -b "refs/heads/oneplus/${CPU}" \
             -m "${DEVICE_MANIFEST}.xml" \
             --depth=1
+          case "$DEVICE_MANIFEST" in
+            oneplus_15|oneplus_15t)
+              manifest_path=".repo/manifests/${DEVICE_MANIFEST}.xml"
+              if [ ! -f "$manifest_path" ]; then
+                manifest_path=".repo/manifest.xml"
+              fi
+              python3 "$GITHUB_WORKSPACE/.github/scripts/sanitize-oneplus-manifest.py" "$manifest_path"
+              ;;
+          esac
           repo sync -c -j"$(nproc --all)" --no-tags --no-clone-bundle --force-sync
 
       - name: 准备 KernelSU 和补丁

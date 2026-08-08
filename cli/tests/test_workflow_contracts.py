@@ -1,7 +1,10 @@
 import json
 import re
+import subprocess
 import sys
+import tempfile
 import unittest
+import xml.etree.ElementTree as ET
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -166,6 +169,71 @@ class WorkflowContractTests(unittest.TestCase):
         self.assertIn("clang-r536225", build_workflow)
         self.assertIn("prebuilts/rust/linux-x86/1.82.0/bin/rustc", build_workflow)
         self.assertIn(("android16", "6.12"), abk.ONEPLUS_SUSFS_SUPPORTED)
+
+    def test_oneplus_manifest_sanitizer_removes_unfetchable_optional_prebuilts(self):
+        script = REPO_ROOT / ".github" / "scripts" / "sanitize-oneplus-manifest.py"
+        build_workflow = (
+            REPO_ROOT / ".github" / "workflows" / "oneplus-build.yml"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn("sanitize-oneplus-manifest.py", build_workflow)
+        self.assertIn("oneplus_15|oneplus_15t)", build_workflow)
+        self.assertLess(
+            build_workflow.index("repo init"),
+            build_workflow.index("sanitize-oneplus-manifest.py"),
+        )
+        self.assertLess(
+            build_workflow.index("sanitize-oneplus-manifest.py"),
+            build_workflow.index("repo sync -c"),
+        )
+
+        manifest = """<?xml version="1.0" encoding="UTF-8"?>
+<manifest>
+  <project name="kernel_platform/prebuilts/asuite" path="kernel_platform/prebuilts/asuite" revision="bad"/>
+  <project name="kernel_platform/tools/tradefederation/prebuilts" path="kernel_platform/prebuilts/tradefed" revision="bad"/>
+  <project name="android_kernel_common_oneplus_sm8850" path="kernel_platform/common" revision="good"/>
+</manifest>
+"""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manifest_path = Path(tmpdir) / "oneplus_15t.xml"
+            manifest_path.write_text(manifest, encoding="utf-8")
+
+            result = subprocess.run(
+                [sys.executable, str(script), str(manifest_path)],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+
+            self.assertIn("kernel_platform/prebuilts/asuite", result.stdout)
+            root = ET.parse(manifest_path).getroot()
+            remaining_paths = {project.get("path") for project in root.findall("project")}
+
+        self.assertNotIn("kernel_platform/prebuilts/asuite", remaining_paths)
+        self.assertNotIn("kernel_platform/prebuilts/tradefed", remaining_paths)
+        self.assertIn("kernel_platform/common", remaining_paths)
+
+    def test_oneplus_checkout_runs_after_build_space_mount(self):
+        build_workflow = (
+            REPO_ROOT / ".github" / "workflows" / "oneplus-build.yml"
+        ).read_text(encoding="utf-8")
+
+        self.assertLess(
+            build_workflow.index("easimon/maximize-build-space@master"),
+            build_workflow.index("actions/checkout@v6"),
+        )
+
+    def test_oneplus_build_installs_gendwarfksyms_dependencies(self):
+        build_workflow = (
+            REPO_ROOT / ".github" / "workflows" / "oneplus-build.yml"
+        ).read_text(encoding="utf-8")
+        install_start = build_workflow.index("apt-get install")
+        install_end = build_workflow.index("if ! command -v repo", install_start)
+        dependency_block = build_workflow[install_start:install_end]
+
+        self.assertIn("libelf-dev", dependency_block)
+        self.assertIn("libdw-dev", dependency_block)
+        self.assertIn("zlib1g-dev", dependency_block)
 
     def test_kpm_support_matches_the_selected_ksu_source(self):
         cases = (
